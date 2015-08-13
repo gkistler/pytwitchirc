@@ -139,7 +139,7 @@ class BBMTwitchBotFactory(ReconnectingClientFactory):
 	"""
 
 	# the class of the protocol to build when new connection is made
-	protocol = BBMTwitchCBot
+	protocol = BBMTwitchBot
 
 	def __init__(self, serversettings):
 		#reconnect settings

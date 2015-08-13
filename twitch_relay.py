@@ -16,7 +16,7 @@ if __name__ == '__main__':
 	state = State()
 	cwdu = os.getcwdu()
 	logpath = os.path.join(cwdu, 'logs')
-	if not os.path.exists(logs):
+	if not os.path.exists(logpath):
 		os.mkdir(logpath)
 	logfile = os.path.join(logpath, "twitch_relayer.log")
 	parser = argparse.ArgumentParser(prog='pytwitchrelay')

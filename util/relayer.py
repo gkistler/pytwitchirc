@@ -43,7 +43,9 @@ class Relayer:
 		if label == 'twitch' and channel in self.twitch_to_irc and self.twitch_to_irc[channel]:
 			for ircchan in self.twitch_to_irc[channel]:
 				self.ircproto.sendmsg(ircchan, message)
-		elif channel in self.irc_to_twitch:
-			self.twitchproto.sendmsg(self.irc_to_twitch[channel], message)
+		# Twitch throttles messages heavily
+		# this is a bad idea
+		#elif channel in self.irc_to_twitch:
+		#	self.twitchproto.sendmsg(self.irc_to_twitch[channel], message)
 
 relayer = Relayer()
