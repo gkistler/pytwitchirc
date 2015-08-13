@@ -1,20 +1,25 @@
-# Twisted Twitch
+# Twisted IRC
 
 from twisted.words.protocols.irc import IRCClient
 from twisted.internet.protocol import ReconnectingClientFactory
 from twisted.python import log
+from relayer import Relayer
+from helpers import process_hostmask
 
 
-class BBMTwitchBot(IRCClient):
+relayer = Relayer()
+
+
+class BBMIRCBot(IRCClient):
 	"""BBM"""
 
 	def sendLine(self, line):
 		IRCClient.sendLine(self, line)
-		print 'Out:: ' + line
+		if self.debug: log.msg('Out:: ' + line)
 
 	def lineReceived(self, line):
 		IRCClient.lineReceived(self, line)
-		print 'In:: ' + line
+		if self.debug: log.msg('In:: ' + line)
 
 	def irc_RPL_WELCOME(self, prefix, params):
 		"""
@@ -27,34 +32,58 @@ class BBMTwitchBot(IRCClient):
 		Called when a user joins a channel.
 		"""
 		IRCClient.irc_JOIN(self, prefix, params)
-		nick = prefix.split('!')[0]
-		channel = params[-1]
+		nick, ident, host = process_hostmask(prefix)
+		channel = params[0]
+		if nick == self.nickname:
+			self.state.channels.add(channel)
 
 	def irc_PART(self, prefix, params):
 		"""
 		Called when a user leaves a channel.
 		"""
 		IRCClient.irc_PART(self, prefix, params)
-		nick = prefix.split('!')[0]
-		channel = params[-1]
+		nick, ident, host = process_hostmask(prefix)
+		channel = params[0]
+		if nick == self.nickname:
+			self.state.channels.remove(channel)
 
 	def irc_QUIT(self, prefix, params):
 		"""
 		Called when a user has quit.
 		"""
-		print prefix, params
 		IRCClient.irc_QUIT(self, prefix, params)
 		#self.state.nukeuser(prefix.split('!')[0])
-		dispatch(self, Event("userQuit", prefix, params, hostmask=prefix))
 
 	def irc_PRIVMSG(self, prefix, params):
 		"""
 		This will get called when the bot receives a message.
 		"""
-		user = prefix
+		nick, ident, host = process_hostmask(prefix)
 		channel = params[0]
 		message = params[-1]
-		self.relay("%s: %s" % (user, message))
+		print 'PRIVMSG (%s): [[%s]] [[%s]]' % (self.host, nick, message)
+		if nick in self.admins and message.startswith('!'):
+			cmd = message[1:].split(' ', 1)[0]
+			if cmd == 'startrelay':
+				if self.state.relay_active:
+					self.msg(channel, '%s: Relay already on!' % nick)
+					return
+
+				self.msg(channel, '%s: Relay activated.' % nick)
+				self.state.relay_active = True
+			elif cmd == 'stoprelay':
+				if not self.state.relay_active:
+					self.msg(channel, '%s: Relay already off!' % nick)
+					return
+				self.msg(channel, '%s: Relay deactivated.' % nick)
+				self.state.relay_active = False
+			elif cmd == 'addrelay':
+				x = message.split(' ')
+				relayer.add_relay(x[1], x[2])
+				self.msg(channel, 'Here we go.')
+			# Don't relay admin commands
+			return
+		self.relay(channel, "%s: %s" % (nick, message))
 
 
 	def irc_NOTICE(self, prefix, params):
@@ -74,17 +103,16 @@ class BBMTwitchBot(IRCClient):
 		IRCClient.irc_NICK(self, prefix, params)
 		nick = prefix.split('!', 1)[0]
 
-
 	def irc_KICK(self, prefix, params):
 		"""
 		Called when a user is kicked from a channel.
 		"""
-		IRCClient.irc_NICK(self, prefix, params)
 		kicker = prefix.split('!')[0]
 		channel = params[0]
 		kicked = params[1]
 		message = params[-1]
-
+		if kicked.lower() == self.nickname.lower():
+			self.state.channels.remove(channel)
 
 	def irc_RPL_NAMREPLY(self, prefix, params):
 		"""
@@ -94,23 +122,20 @@ class BBMTwitchBot(IRCClient):
 		channel = params[2]
 		users = params[3].split(" ")
 
-	def relay(self, message):
-		communicator.relay(self, message)
+	def relay(self, channel, message):
+		relayer.relay(channel, message, self.label)
 
 	def connectionMade(self):
 		IRCClient.connectionMade(self)
-		log.msg("[%s] Connection made, registering." % self.network)
-		communicator.register(self)
 		#reset connection factory delay:
 		self.factory.resetDelay()
 
 	def connectionLost(self, reason):
 		IRCClient.connectionLost(self, reason)
-		log.msg("[%s] Connection lost, unregistering." % self.network)
-		communicator.unregister(self)
+		log.msg("[%s] Connection lost, unregistering." % self.host)
+		relayer.unregister(self)
 
 	# callbacks for events
-
 	def signedOn(self):
 		"""Called when bot has succesfully signed on to server."""
 		print "[Signed on]"
@@ -118,21 +143,19 @@ class BBMTwitchBot(IRCClient):
 		for chan in self.channels:
 			print 'Joining %s' % chan
 			self.join(chan)
-
+		log.msg("[%s] Connection made and all channels joined, registering." % self.label)
+		relayer.register(self)
 
 	def sendmsg(self, channel, msg):
 		#check if there's hooks, if there is, dispatch, if not, send directly
 		self.msg(channel, msg)
 
-	#overriding msg
-	# need to consider dipatching this event and allow for some override somehow
-	# TODO: need to do some funky UTF-8 length calculation. Most naive one would be to keep adding a
-	#	character so like for char in msg: t += char if len(t.encode("utf-8")) > max: send(old) else: old = t
-	#	or something... google or stackoverflow I guess WORRY ABOUT THIS LATER THOUGH
 	def msg(self, user, msg, length=None):
 		msg = msg.encode("utf-8")
-		if length: IRCClient.msg(self, user, msg, length)
-		else: IRCClient.msg(self, user, msg)
+		if length:
+			IRCClient.msg(self, user, msg, length)
+		else:
+			IRCClient.msg(self, user, msg)
 
 
 class BBMTwitchBotFactory(ReconnectingClientFactory):
@@ -141,19 +164,35 @@ class BBMTwitchBotFactory(ReconnectingClientFactory):
 	"""
 
 	# the class of the protocol to build when new connection is made
-	protocol = BBMTwitchBot
+	protocol = BBMIRCBot
 
-	def __init__(self, serversettings):
+	def __init__(self, label, conf, state):
 		#reconnect settings
 		self.maxDelay = 45
 		self.factor = 1.6180339887498948
-		self.channels = serversettings['channels']
-		print 'test__init__'
+		self.channels = conf['channels']
+		self.label = label
+		self.admins = conf['admins']
+		if not isinstance(self.channels, (tuple, list)):
+			self.channels = [self.channels]
+		self.host = conf['host']
+		self.nickname = conf['nickname']
+		self.password = None
+		self.state = state
+		if 'password' in conf:
+			self.password = conf['password']
 
 	def buildProtocol(self, address):
 		proto = ReconnectingClientFactory.buildProtocol(self, address)
-		proto.nickname = 'testbort'
+		proto.label = self.label
+		proto.nickname = self.nickname
+		proto.password = self.password
 		proto.channels = self.channels
+		proto.admins = self.admins
 		proto.network = address
-		proto.identifier = '%s@%s' % (','.join(proto.channels), proto.network)
+		proto.host = self.host
+		proto.relay_active = True
+		proto.debug = True
+		proto.state = self.state
+		proto.identifier = '%s@%s' % (','.join(proto.channels), proto.host)
 		return proto

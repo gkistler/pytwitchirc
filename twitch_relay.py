@@ -3,6 +3,7 @@ import yaml
 # twisted imports
 import argparse
 from util.irc import BBMIRCBotFactory
+from util.twitch import BBMTwitchBotFactory
 from util.configparser import load_config
 from util.state import State
 from twisted.internet import reactor
@@ -32,7 +33,7 @@ if __name__ == '__main__':
 	log.msg("Successfully loaded config file '%s'!" % args.config)
 
 	log.msg('Initiating connection to twitch, channels (%s)' % conf['twitch']['channels'])
-	reactor.connectTCP(conf['twitch']['host'], conf['twitch']['port'], BBMIRCBotFactory('twitch', conf['twitch'], state))
+	reactor.connectTCP(conf['twitch']['host'], conf['twitch']['port'], BBMTwitchBotFactory('twitch', conf['twitch'], state))
 
 	for label, config in conf['ircservers'].items():
 		log.msg('Initiating IRC server connection (%s - %s:%s (%s))' % (label, config['host'], config['port'], ','.join(config['channels'])))

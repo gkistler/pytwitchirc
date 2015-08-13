@@ -4,27 +4,26 @@ from twisted.python import log
 class Relayer:
 
 	def __init__(self):
-		self.twitchproto = None
-		self.ircproto = None
+		self.twitch_proto = None
+		self.irc_proto = None
 		# Twitch -> [IRC Chans]
 		self.relaymap = {}
 		self.twitch_to_irc = {}
 		self.irc_to_twitch = {}
 
-	def register(self, protocol):
-		if protocol.label == 'twitch':
-			if self.twitchproto is not None:
-				log.msg("WARNING: Twitch protocol already registered!")
-			self.twitchproto = protocol
-		else:
-			self.ircproto = protocol
+	def register_twitch(self, protocol):
+		if self.twitch_proto is not None:
+			log.msg("WARNING: Twitch protocol already registered!")
+		self.twitch_proto = protocol
 
-		# Ready to perform relay_setup
-		#if self.twitchproto is not None and self.ircproto is not None:
+	def register_irc(self, protocol):
+		if self.twitch_proto is not None:
+			log.msg("WARNING: IRC protocol already registered!")
+		self.irc_proto = protocol
 
 	def add_relay(self, twitch_chan, irc_chan):
-		if irc_chan not in self.ircproto.state.channels:
-			self.ircproto.join(irc_chan)
+		if irc_chan not in self.irc_proto.state.channels:
+			self.irc_proto.join(irc_chan)
 		self.relaymap.setdefault(twitch_chan, []).append(irc_chan)
 		self.build_relay_maps()
 
@@ -42,7 +41,7 @@ class Relayer:
 		pprint(self.irc_to_twitch)
 		if label == 'twitch' and channel in self.twitch_to_irc and self.twitch_to_irc[channel]:
 			for ircchan in self.twitch_to_irc[channel]:
-				self.ircproto.sendmsg(ircchan, message)
+				self.irc_proto.sendmsg(ircchan, message)
 		# Twitch throttles messages heavily
 		# this is a bad idea
 		#elif channel in self.irc_to_twitch:
