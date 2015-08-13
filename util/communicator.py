@@ -1,5 +1,6 @@
 from twisted.python import log
 
+
 class Communicator:
 	def __init__(self):
 		self.twitchproto = None

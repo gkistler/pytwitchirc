@@ -4,6 +4,7 @@ from twisted.words.protocols.irc import IRCClient
 from twisted.internet.protocol import ReconnectingClientFactory
 from twisted.python import log
 
+
 class BBMTwitchBot(IRCClient):
 	"""BBM"""
 
@@ -132,6 +133,7 @@ class BBMTwitchBot(IRCClient):
 		msg = msg.encode("utf-8")
 		if length: IRCClient.msg(self, user, msg, length)
 		else: IRCClient.msg(self, user, msg)
+
 
 class BBMTwitchBotFactory(ReconnectingClientFactory):
 	"""A factory for BBMBot.

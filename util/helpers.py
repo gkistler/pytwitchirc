@@ -1,5 +1,6 @@
 # helpers
 
+
 def process_hostmask(h):
 	if h:
 		try:

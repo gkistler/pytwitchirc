@@ -1,5 +1,3 @@
-
-
 example = '''# Twitch Settings
 twitch:
   channels: ['#twitch_chan1', 'twitch_chan2']

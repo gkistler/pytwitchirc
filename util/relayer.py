@@ -1,5 +1,5 @@
-
 from twisted.python import log
+
 
 class Relayer:
 
@@ -23,16 +23,16 @@ class Relayer:
 		#if self.twitchproto is not None and self.ircproto is not None:
 
 	def add_relay(self, twitch_chan, irc_chan):
-		if not irc_chan in self.ircproto.state.channels:
+		if irc_chan not in self.ircproto.state.channels:
 			self.ircproto.join(irc_chan)
 		self.relaymap.setdefault(twitch_chan, []).append(irc_chan)
 		self.build_relay_maps()
 
 	def build_relay_maps(self):
 		for twitch_chan, ircchans in self.relaymap.items():
-			for ircchan in ircchans:
-				self.twitch_to_irc.setdefault(twitch_chan, []).append(ircchan)
-				self.irc_to_twitch[ircchan] = twitch_chan
+			for irc_chan in ircchans:
+				self.twitch_to_irc.setdefault(twitch_chan, []).append(irc_chan)
+				self.irc_to_twitch[irc_chan] = twitch_chan
 
 	def relay(self, channel, message, label):
 		log.msg('%s %s %s' % (channel, message, label))
@@ -47,5 +47,6 @@ class Relayer:
 		# this is a bad idea
 		#elif channel in self.irc_to_twitch:
 		#	self.twitchproto.sendmsg(self.irc_to_twitch[channel], message)
+
 
 relayer = Relayer()
