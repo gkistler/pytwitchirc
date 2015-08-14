@@ -82,7 +82,7 @@ def validate_twitch(conf, conf_errors):
 	if not 'channels' in conf:
 		log.msg("No Twitch channels configured, proceeding.")
 
-	return (conf_errors, conf)
+	return conf_errors, conf
 
 
 def validate_ircserver(name, conf, conf_errors):
@@ -101,7 +101,8 @@ def validate_ircserver(name, conf, conf_errors):
 	if not 'admins' in conf:
 		log.msg("No channels configured for IRC server '%s', proceeding." % name)
 
-	return (conf_errors, conf)
+	return conf_errors, conf
+
 
 def load_relay_config(config_file):
 	try:

@@ -1,8 +1,5 @@
 # pycharm metadata
 .idea
-# default config location
-config/twitch_relayer.yml
-# logs
-logs/*
-# Compile python
+config/
+logs/
 *.pyc

@@ -1,0 +1,7 @@
+# Relay configuration example
+# NOTE: IRC admin authentication is performed **BY NICK ONLY** at this time so be careful.
+
+TWITCH_CHANNELNAME:
+  irc_admins: [irc_nick1, irc_nick2]
+  irc_channels: ['#channel1', '#channel2']
+  twitch_admins: [twitch_nick1, twitch_nick2]
